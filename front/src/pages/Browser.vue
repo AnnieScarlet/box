@@ -5,8 +5,8 @@
 		route path: {{ $route.path }}<br>
 		route params: {{ $route.params[0] }}<br>
 
-		<div class="thumb" v-for="media in media_list" v-on:click="selectMedia(media)">
-			<img v-bind:src="getThumbnailUrl(media)" />
+		<div class="thumb" v-for="post in posts" v-on:click="selectMedia(post)">
+			<img v-bind:src="getThumbnailUrl(post)" />
 		</div>
 		<div class="clear"/>
 	</div>
@@ -14,30 +14,13 @@
 
 <script>
 import consts from '@/constants'
-
-// 仮データ
-const photos = [
-  'ffxiv_20171126_152637',
-  'ffxiv_20171126_152841',
-  'ffxiv_20171126_153353',
-  'ffxiv_20171126_153556',
-  'ffxiv_20171126_153716',
-  'ffxiv_20171126_153716_',
-  'ffxiv_20171126_153824',
-  'ffxiv_20171126_154146',
-  'ffxiv_20171126_154618',
-  'ffxiv_20171126_155042',
-  'ffxiv_20171126_155049',
-  'ffxiv_20171128_012111',
-  'ffxiv_20171129_000925',
-  'ffxiv_20171129_001104'
-]
+import api from '@/api'
 
 export default {
   name: 'index',
   data: () => {
     return {
-      media_list: []
+      posts: []
     }
   },
   methods: {
@@ -49,15 +32,35 @@ export default {
       this.$store.commit('MediaView/setData', mediaData)
     }
   },
+
   mounted () {
+    // URL PATH を処理
+
     if (this.$route.name === 'index-view') {
+      // 表示していた投稿があった
       this.$store.commit('MediaView/setData', { id: this.$route.params.id })
     }
 
-    // リストを作る
-    let mediaList = []
-    photos.forEach((x) => mediaList.push({ id: x }))
-    this.media_list = mediaList
+    // 投稿リストを作る
+    let query = ''
+
+    if (this.$route.name === 'index-search') {
+      query = this.$route.params[0]
+    }
+
+    (async () => {
+      let posts = []
+      let response = await api.getPosts(query)
+      console.log(response)
+      let {data, error} = response
+      if (!error) {
+        console.log(data)
+        console.log(data.forEach)
+        console.log(data.length)
+        data.forEach((x) => posts.push({ id: x }))
+        this.posts = posts
+      }
+    })()
   }
 }
 </script>

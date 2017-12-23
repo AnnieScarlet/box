@@ -1,0 +1,17 @@
+front/.node-version
+server/.python-version
+
+.DS_Store
+front/node_modules/
+front/dist/
+front/npm-debug.log*
+front/yarn-debug.log*
+front/yarn-error.log*
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln

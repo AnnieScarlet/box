@@ -18,7 +18,7 @@ import api from '@/api'
 
 export default {
   name: 'index',
-  data: () => {
+  data () {
     return {
       posts: []
     }

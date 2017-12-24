@@ -33,12 +33,14 @@ export default {
     }
   },
 
-  mounted () {
-    // URL PATH を処理
+  beforeCreate () {
+     // URL PATH を処理
 
     if (this.$route.name === 'index-view') {
       // 表示していた投稿があった
-      this.$store.commit('MediaView/setData', { id: this.$route.params.id })
+      (async () => {
+        this.$store.commit('MediaView/setData', { id: this.$route.params.id })
+      })()
     }
 
     // 投稿リストを作る
@@ -50,13 +52,8 @@ export default {
 
     (async () => {
       let posts = []
-      let response = await api.getPosts(query)
-      console.log(response)
-      let {data, error} = response
+      let {data, error} = await api.getPosts(query)
       if (!error) {
-        console.log(data)
-        console.log(data.forEach)
-        console.log(data.length)
         data.forEach((x) => posts.push({ id: x }))
         this.posts = posts
       }

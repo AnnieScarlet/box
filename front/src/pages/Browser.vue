@@ -28,7 +28,7 @@ export default {
       return consts.static_url + mediaData.id
     },
     selectMedia (mediaData) {
-      this.$router.push({path: `media/${mediaData.id}`})
+      this.$router.push({path: `/media/${mediaData.id}`})
       this.$store.commit('MediaView/setData', mediaData)
     }
   },

@@ -16,7 +16,7 @@ const MediaView = {
   },
   getters: {
     getMediaUrl (state) {
-      return consts.static_url + state.media_view_data.id + '.png'
+      return consts.static_url + state.media_view_data.id
     }
   }
 }

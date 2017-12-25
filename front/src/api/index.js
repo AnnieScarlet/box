@@ -26,17 +26,17 @@ const send = async (method, path, data) => {
   return method(consts.api_url + path, data)
 }
 
-// const get = async (path) => {
-  // return send(client.get, path)
-// }
+const get = async (path) => {
+  return send(client.get, path)
+}
 const post = async (path, data) => {
   return send(client.post, path, data)
 }
 
 export default {
   WebResult,
-  async getPosts () {
-    return axios.get('https://s3-ap-northeast-1.amazonaws.com/eorzeabox-dev/api/posts.json')
+  async getPosts (query) {
+    return get('/media/list')
   },
 
   async postMediaData (form) {

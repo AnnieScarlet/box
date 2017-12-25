@@ -25,10 +25,10 @@ export default {
   },
   methods: {
     getThumbnailUrl (mediaData) {
-      return consts.static_url + mediaData.id + '.png'
+      return consts.static_url + mediaData.id
     },
     selectMedia (mediaData) {
-      this.$router.push({name: 'index-view', params: {type: 'photo', id: mediaData.id}})
+      this.$router.push({path: `media/${mediaData.id}`})
       this.$store.commit('MediaView/setData', mediaData)
     }
   },
@@ -39,7 +39,7 @@ export default {
     if (this.$route.name === 'index-view') {
       // 表示していた投稿があった
       (async () => {
-        this.$store.commit('MediaView/setData', { id: this.$route.params.id })
+        this.$store.commit('MediaView/setData', { id: this.$route.params[0] })
       })()
     }
 

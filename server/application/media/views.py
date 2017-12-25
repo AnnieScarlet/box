@@ -1,5 +1,6 @@
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.conf import settings
 from django.views import View
 from django.http import HttpResponse
 from decorators import require_auth
@@ -13,7 +14,13 @@ import ujson
 class MediaList(View):
 
     def get(self, request, *args, **kwargs):
-        pass
+        from boto.s3.connection import S3Connection
+
+        conn = S3Connection(settings.AWS_ACCESS_KEY_ID,settings.AWS_SECRET_ACCESS_KEY)
+        bucket = conn.get_bucket(settings.AWS_STORAGE_BUCKET_NAME)
+
+        context = [x.name for x in bucket.list() if x.name.startswith('photo/') and len(x.name) > 6]
+        return HttpResponse(ujson.dumps(context))
 
 
 class MediaDetail(View):

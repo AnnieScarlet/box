@@ -27,7 +27,7 @@ export default new Router({
       component: Browser
     },
     {
-      path: '/media/:type/:id',
+      path: '/media/(.*)',
       name: 'index-view',
       component: Browser
     },

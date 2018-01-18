@@ -32,13 +32,14 @@ class ThumbnailView {
   constructor (canvas, width, height, data, preview) {
     this.preview = preview
 
+    this.scale = 1.0
     this.width = width
     this.height = height
     this.dragging = false
     this.begin_point = {x: 0, y: 0}
     this.current_point = {
-      x: parseInt(width / 2 - THUMBNAIL_BOX_SIZE.WIDTH / 2),
-      y: parseInt(height / 2 - THUMBNAIL_BOX_SIZE.HEIGHT / 2)
+      x: parseInt(width / 2 - this.box_size.width / 2),
+      y: parseInt(height / 2 - this.box_size.height / 2)
     }
 
     let ctx = canvas.getContext('2d')
@@ -57,10 +58,20 @@ class ThumbnailView {
 
     this.draw(canvas, ctx)
   }
+  get scale () {
+    return this._scale
+  }
+  set scale (scale) {
+    this._scale = scale
+    this.box_size = {
+      width: THUMBNAIL_BOX_SIZE.WIDTH * (1.0 / scale),
+      height: THUMBNAIL_BOX_SIZE.HEIGHT * (1.0 / scale)
+    }
+  }
   get position () {
     return {
-      x: (this.current_point.x + THUMBNAIL_BOX_SIZE.WIDTH / 2) / this.width,
-      y: (this.current_point.y + THUMBNAIL_BOX_SIZE.HEIGHT / 2) / this.height
+      x: (this.current_point.x + this.box_size.width / 2) / this.width,
+      y: (this.current_point.y + this.box_size.height / 2) / this.height
     }
   }
   static getPoint (e, canvas) {
@@ -76,8 +87,8 @@ class ThumbnailView {
 
     let { x, y } = this.constructor.getPoint(e, canvas)
 
-    if (this.current_point.x <= x && x <= this.current_point.x + THUMBNAIL_BOX_SIZE.WIDTH &&
-        this.current_point.y <= y && y <= this.current_point.y + THUMBNAIL_BOX_SIZE.HEIGHT) {
+    if (this.current_point.x <= x && x <= this.current_point.x + this.box_size.width &&
+        this.current_point.y <= y && y <= this.current_point.y + this.box_size.height) {
       this.dragging = true
       this.begin_point = {x: x - this.current_point.x, y: y - this.current_point.y}
     }
@@ -100,44 +111,53 @@ class ThumbnailView {
       this.current_point.x = 0
       this.begin_point.x = x
     }
-    if (this.current_point.x > canvas.width - THUMBNAIL_BOX_SIZE.WIDTH) {
-      this.current_point.x = canvas.width - THUMBNAIL_BOX_SIZE.WIDTH
-      this.begin_point.x = x - (canvas.width - THUMBNAIL_BOX_SIZE.WIDTH)
+    if (this.current_point.x > canvas.width - this.box_size.width) {
+      this.current_point.x = canvas.width - this.box_size.width
+      this.begin_point.x = x - (canvas.width - this.box_size.width)
     }
     if (this.current_point.y < 0) {
       this.current_point.y = 0
       this.begin_point.y = y
     }
-    if (this.current_point.y > canvas.height - THUMBNAIL_BOX_SIZE.HEIGHT) {
-      this.current_point.y = canvas.height - THUMBNAIL_BOX_SIZE.HEIGHT
-      this.begin_point.y = y - (canvas.height - THUMBNAIL_BOX_SIZE.HEIGHT)
+    if (this.current_point.y > canvas.height - this.box_size.height) {
+      this.current_point.y = canvas.height - this.box_size.height
+      this.begin_point.y = y - (canvas.height - this.box_size.height)
     }
     this.draw(canvas, ctx)
   }
   draw (canvas, ctx) {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     ctx.fillRect(0, 0, canvas.width, canvas.height)
-    ctx.clearRect(this.current_point.x, this.current_point.y, THUMBNAIL_BOX_SIZE.WIDTH, THUMBNAIL_BOX_SIZE.HEIGHT)
-    ctx.strokeRect(this.current_point.x, this.current_point.y, THUMBNAIL_BOX_SIZE.WIDTH, THUMBNAIL_BOX_SIZE.HEIGHT)
+    ctx.clearRect(this.current_point.x, this.current_point.y, this.box_size.width, this.box_size.height)
+    ctx.strokeRect(this.current_point.x, this.current_point.y, this.box_size.width, this.box_size.height)
 
     if (this.preview) {
-      this.preview.update(this.position)
+      this.preview.update(this.position, this.scale)
     }
   }
 }
 
 class ThumbnailPreview {
   constructor (img, width, height, data) {
+    this.scale = 1.0
+    this.width = width
+    this.height = height
     this.img = img
 
     let previewBox = img.parentElement
     previewBox.style.width = THUMBNAIL_BOX_SIZE.WIDTH + 'px'
     previewBox.style.height = THUMBNAIL_BOX_SIZE.HEIGHT + 'px'
+
     img.src = data
     img.width = width
     img.height = height
   }
-  update (position) {
+  update (position, scale) {
+    if (this.scale !== scale) {
+      this.scale = scale
+      this.img.width = this.width * scale
+      this.img.height = this.height * scale
+    }
     this.img.style.left = '-' + (this.img.width * position.x - THUMBNAIL_BOX_SIZE.WIDTH / 2) + 'px'
     this.img.style.top = '-' + (this.img.height * position.y - THUMBNAIL_BOX_SIZE.HEIGHT / 2) + 'px'
   }

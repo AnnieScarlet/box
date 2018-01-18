@@ -1,9 +1,9 @@
 <template>
-	<div id="upload">
-		Upload
+  <div id="upload">
+    Upload
         <form v-on:submit.prevent="submit">
             <div>
-                <img v-bind:src="img_data" v-if="img_data" />
+                <canvas class="thumbnail" width="0" height="0"></canvas>
                 <input type="file" name="file" v-on:change="onChangeFile">
             </div>
             <div>
@@ -14,16 +14,105 @@
             </div>
             <button type="submit">Submit</button>
         </form>
-	</div>
+  </div>
 </template>
 
 <script>
 import api from '@/api'
 
+const QUARITY = 0.6
+const THUMBNAIL_BOX_SIZE = { WIDTH: 200, HEIGHT: 200 }
+const IMAGE_MAX_SIZE = 1280
+const THUMBNAIL_MAX_SIZE = 250
+
+class ThumbnailView {
+  constructor (canvas, width, height, data) {
+    this.current_point = {
+      x: parseInt(width / 2 - THUMBNAIL_BOX_SIZE.WIDTH / 2),
+      y: parseInt(height / 2 - THUMBNAIL_BOX_SIZE.HEIGHT / 2)
+    }
+    this.begin_point = {x: 0, y: 0}
+    this.dragging = false
+
+    let ctx = canvas.getContext('2d')
+
+    canvas.width = width
+    canvas.height = height
+    canvas.style.backgroundImage = 'url(data:' + data + ')'
+    canvas.style.backgroundSize = '100%'
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'
+    ctx.strokeStyle = 'red'
+
+    canvas.addEventListener('mousedown', (e) => this.onMouseDown(e, canvas, ctx), false)
+    canvas.addEventListener('mouseup', (e) => this.onMouseUp(e, canvas, ctx), false)
+    canvas.addEventListener('mousemove', (e) => this.onMouseMove(e, canvas, ctx), false)
+
+    this.draw(canvas, ctx)
+  }
+  get position () {
+    return this.current_point
+  }
+  static getPoint (e, canvas) {
+    return {
+      x: parseInt(e.clientX - canvas.offsetLeft),
+      y: parseInt(e.clientY - canvas.offsetTop)
+    }
+  }
+  onMouseDown (e, canvas, ctx) {
+    if (this.dragging) {
+      return
+    }
+
+    let { x, y } = this.constructor.getPoint(e, canvas)
+
+    if (this.current_point.x <= x && x <= this.current_point.x + THUMBNAIL_BOX_SIZE.WIDTH &&
+        this.current_point.y <= y && y <= this.current_point.y + THUMBNAIL_BOX_SIZE.HEIGHT) {
+      this.dragging = true
+      this.begin_point = {x: x - this.current_point.x, y: y - this.current_point.y}
+    }
+  }
+  onMouseUp (e, canvas, ctx) {
+    this.dragging = false
+  }
+  onMouseMove (e, canvas, ctx) {
+    if (!this.dragging) {
+      return
+    }
+
+    let { x, y } = this.constructor.getPoint(e, canvas)
+
+    this.current_point = {
+      x: x - this.begin_point.x,
+      y: y - this.begin_point.y
+    }
+    if (this.current_point.x < 0) {
+      this.current_point.x = 0
+    }
+    if (this.current_point.x > canvas.width - THUMBNAIL_BOX_SIZE.WIDTH) {
+      this.current_point.x = canvas.width - THUMBNAIL_BOX_SIZE.WIDTH
+    }
+    if (this.current_point.y < 0) {
+      this.current_point.y = 0
+    }
+    if (this.current_point.y > canvas.height - THUMBNAIL_BOX_SIZE.HEIGHT) {
+      this.current_point.y = canvas.height - THUMBNAIL_BOX_SIZE.HEIGHT
+    }
+    this.draw(canvas, ctx)
+  }
+  draw (canvas, ctx) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    ctx.clearRect(this.current_point.x, this.current_point.y, THUMBNAIL_BOX_SIZE.WIDTH, THUMBNAIL_BOX_SIZE.HEIGHT)
+    ctx.strokeRect(this.current_point.x, this.current_point.y, THUMBNAIL_BOX_SIZE.WIDTH, THUMBNAIL_BOX_SIZE.HEIGHT)
+  }
+}
+
 export default {
   data () {
     return {
-      img_data: null
+      img_data: null,
+      thumb_data: null
     }
   },
   methods: {
@@ -46,8 +135,49 @@ export default {
       let reader = new FileReader()
       reader.readAsDataURL(file)
       reader.onload = () => {
-        vm.img_data = reader.result
+        let img = new Image()
+        img.src = reader.result
+        img.onload = () => {
+          let { width, height } = this.resolveSize(img.width, img.height, THUMBNAIL_MAX_SIZE, THUMBNAIL_MAX_SIZE)
+
+          vm.img_data = this.resize(img, IMAGE_MAX_SIZE)
+          // vm.thumb_data = this.resize(img, THUMBNAIL_MAX_SIZE)
+          vm.thumb_data = vm.img_data
+
+          this._thumbnail_view = this._thumbnail_view || new ThumbnailView(e.target.previousElementSibling, width, height, vm.thumb_data)
+        }
       }
+    },
+    resolveSize (width, height, max, min) {
+      let calc = (exp, ratio) => {
+        let r = ratio(exp(width, height))
+        width *= r
+        height *= r
+      }
+      if (max) {
+        calc(Math.max, (x) => x > max ? max / x : 1)
+      }
+      if (min) {
+        calc(Math.min, (x) => x < min ? min / x : 1)
+      }
+      return { width, height }
+    },
+    resize (src, max, tmp) {
+      let { width, height } = this.resolveSize(src.width, src.height, max)
+      tmp = tmp || document.createElement('canvas')
+      let ctx = tmp.getContext('2d')
+
+      if (width / src.width <= 0.5) {
+        tmp.width = src.width * 0.5
+        tmp.height = src.height * 0.5
+        ctx.drawImage(src, 0, 0, tmp.width, tmp.height)
+        return this.resize(tmp, max, src.getContext && src)
+      }
+
+      tmp.width = width
+      tmp.height = height
+      ctx.drawImage(src, 0, 0, width, height)
+      return tmp.toDataURL('image/jpeg', QUARITY)
     },
     submit (e) {
       let form = new FormData(e.srcElement)
@@ -58,7 +188,4 @@ export default {
 </script>
 
 <style>
-#upload form img {
-  width: 100%;
-}
 </style>

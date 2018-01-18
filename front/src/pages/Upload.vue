@@ -32,14 +32,18 @@ class ThumbnailView {
   constructor (canvas, width, height, data, preview) {
     this.preview = preview
 
-    this.scale = 1.0
     this.width = width
     this.height = height
+
+    let pivot = {
+      x: parseInt(width / 2 - THUMBNAIL_BOX_SIZE.WIDTH / 2),
+      y: parseInt(height / 2 - THUMBNAIL_BOX_SIZE.HEIGHT / 2)
+    }
     this.dragging = false
     this.begin_point = {x: 0, y: 0}
-    this.current_point = {
-      x: parseInt(width / 2 - this.box_size.width / 2),
-      y: parseInt(height / 2 - this.box_size.height / 2)
+    this.current_rect = {
+      min: {x: pivot.x, y: pivot.y},
+      max: {x: pivot.x + THUMBNAIL_BOX_SIZE.WIDTH, y: pivot.y + THUMBNAIL_BOX_SIZE.HEIGHT}
     }
 
     let ctx = canvas.getContext('2d')
@@ -58,20 +62,10 @@ class ThumbnailView {
 
     this.draw(canvas, ctx)
   }
-  get scale () {
-    return this._scale
-  }
-  set scale (scale) {
-    this._scale = scale
-    this.box_size = {
-      width: THUMBNAIL_BOX_SIZE.WIDTH * (1.0 / scale),
-      height: THUMBNAIL_BOX_SIZE.HEIGHT * (1.0 / scale)
-    }
-  }
-  get position () {
+  get rect () {
     return {
-      x: (this.current_point.x + this.box_size.width / 2) / this.width,
-      y: (this.current_point.y + this.box_size.height / 2) / this.height
+      min: {x: this.current_rect.min.x / this.width, y: this.current_rect.min.y / this.height},
+      max: {x: this.current_rect.max.x / this.width, y: this.current_rect.max.y / this.height}
     }
   }
   static getPoint (e, canvas) {
@@ -80,6 +74,41 @@ class ThumbnailView {
       y: parseInt(e.clientY - canvas.offsetTop)
     }
   }
+  resolveRect () {
+    if (this.current_rect.min.x < 0) {
+      this.current_rect.max.x -= this.current_rect.min.x
+      this.current_rect.min.x = 0
+    }
+    if (this.current_rect.min.y < 0) {
+      this.current_rect.max.y -= this.current_rect.min.y
+      this.current_rect.min.y = 0
+    }
+    if (this.current_rect.max.x > this.width) {
+      this.current_rect.min.x -= this.current_rect.max.x - this.width
+      this.current_rect.max.x = this.width
+    }
+    if (this.current_rect.max.y > this.height) {
+      this.current_rect.min.y -= this.current_rect.max.y - this.height
+      this.current_rect.max.y = this.height
+    }
+  }
+  setScale (scale) {
+    if (this.width * scale < THUMBNAIL_BOX_SIZE.WIDTH) {
+      scale = THUMBNAIL_BOX_SIZE.WIDTH / this.width
+    }
+    if (this.height * scale < THUMBNAIL_BOX_SIZE.HEIGHT) {
+      scale = THUMBNAIL_BOX_SIZE.HEIGHT / this.height
+    }
+    let size = {w: this.current_rect.max.x - this.current_rect.min.x, h: this.current_rect.max.y - this.current_rect.min.y}
+    let pivot = {x: this.current_rect.min.x + size.w / 2, y: this.current_rect.min.y + size.h / 2}
+    let x = THUMBNAIL_BOX_SIZE.WIDTH * (1.0 / scale) / 2
+    let y = THUMBNAIL_BOX_SIZE.HEIGHT * (1.0 / scale) / 2
+    this.current_rect = {
+      min: {x: pivot.x - x, y: pivot.y - y},
+      max: {x: pivot.x + x, y: pivot.y + y}
+    }
+    this.resolveRect()
+  }
   onMouseDown (e, canvas, ctx) {
     if (this.dragging) {
       return
@@ -87,10 +116,10 @@ class ThumbnailView {
 
     let { x, y } = this.constructor.getPoint(e, canvas)
 
-    if (this.current_point.x <= x && x <= this.current_point.x + this.box_size.width &&
-        this.current_point.y <= y && y <= this.current_point.y + this.box_size.height) {
+    if (this.current_rect.min.x <= x && x <= this.current_rect.max.x &&
+        this.current_rect.min.y <= y && y <= this.current_rect.max.y) {
       this.dragging = true
-      this.begin_point = {x: x - this.current_point.x, y: y - this.current_point.y}
+      this.begin_point = {x: x - this.current_rect.min.x, y: y - this.current_rect.min.y}
     }
   }
   onMouseUp (e, canvas, ctx) {
@@ -103,36 +132,42 @@ class ThumbnailView {
 
     let { x, y } = this.constructor.getPoint(e, canvas)
 
-    this.current_point = {
+    let p = {
       x: x - this.begin_point.x,
       y: y - this.begin_point.y
     }
-    if (this.current_point.x < 0) {
-      this.current_point.x = 0
+    this.current_rect = {
+      min: p,
+      max: {
+        x: this.current_rect.max.x - (this.current_rect.min.x - p.x),
+        y: this.current_rect.max.y - (this.current_rect.min.y - p.y)
+      }
+    }
+
+    if (this.current_rect.min.x < 0) {
       this.begin_point.x = x
     }
-    if (this.current_point.x > canvas.width - this.box_size.width) {
-      this.current_point.x = canvas.width - this.box_size.width
-      this.begin_point.x = x - (canvas.width - this.box_size.width)
+    if (this.current_rect.max.x > this.width) {
+      this.begin_point.x = x - (this.width - (this.current_rect.max.x - this.current_rect.min.x))
     }
-    if (this.current_point.y < 0) {
-      this.current_point.y = 0
+    if (this.current_rect.min.y < 0) {
       this.begin_point.y = y
     }
-    if (this.current_point.y > canvas.height - this.box_size.height) {
-      this.current_point.y = canvas.height - this.box_size.height
-      this.begin_point.y = y - (canvas.height - this.box_size.height)
+    if (this.current_rect.max.y > this.height) {
+      this.begin_point.y = y - (this.height - (this.current_rect.max.y - this.current_rect.min.y))
     }
+
+    this.resolveRect()
     this.draw(canvas, ctx)
   }
   draw (canvas, ctx) {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     ctx.fillRect(0, 0, canvas.width, canvas.height)
-    ctx.clearRect(this.current_point.x, this.current_point.y, this.box_size.width, this.box_size.height)
-    ctx.strokeRect(this.current_point.x, this.current_point.y, this.box_size.width, this.box_size.height)
+    ctx.clearRect(this.current_rect.min.x, this.current_rect.min.y, this.current_rect.max.x - this.current_rect.min.x, this.current_rect.max.y - this.current_rect.min.y)
+    ctx.strokeRect(this.current_rect.min.x, this.current_rect.min.y, this.current_rect.max.x - this.current_rect.min.x, this.current_rect.max.y - this.current_rect.min.y)
 
     if (this.preview) {
-      this.preview.update(this.position, this.scale)
+      this.preview.update(this.rect)
     }
   }
 }
@@ -152,14 +187,15 @@ class ThumbnailPreview {
     img.width = width
     img.height = height
   }
-  update (position, scale) {
+  update (rect) {
+    let scale = THUMBNAIL_BOX_SIZE.WIDTH / (this.width * (rect.max.x - rect.min.x))
     if (this.scale !== scale) {
       this.scale = scale
       this.img.width = this.width * scale
       this.img.height = this.height * scale
     }
-    this.img.style.left = '-' + (this.img.width * position.x - THUMBNAIL_BOX_SIZE.WIDTH / 2) + 'px'
-    this.img.style.top = '-' + (this.img.height * position.y - THUMBNAIL_BOX_SIZE.HEIGHT / 2) + 'px'
+    this.img.style.left = '-' + (this.img.width * rect.min.x) + 'px'
+    this.img.style.top = '-' + (this.img.height * rect.min.y) + 'px'
   }
 }
 

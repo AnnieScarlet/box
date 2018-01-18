@@ -3,7 +3,10 @@
     Upload
         <form v-on:submit.prevent="submit">
             <div>
-                <canvas class="thumbnail" width="0" height="0"></canvas>
+                <div>
+                  <canvas class="thumbnail" width="0" height="0"></canvas>
+                  <div class="preview"><img /></div>
+                </div>
                 <input type="file" name="file" v-on:change="onChangeFile">
             </div>
             <div>
@@ -26,13 +29,17 @@ const IMAGE_MAX_SIZE = 1280
 const THUMBNAIL_MAX_SIZE = 250
 
 class ThumbnailView {
-  constructor (canvas, width, height, data) {
+  constructor (canvas, width, height, data, preview) {
+    this.preview = preview
+
+    this.width = width
+    this.height = height
+    this.dragging = false
+    this.begin_point = {x: 0, y: 0}
     this.current_point = {
       x: parseInt(width / 2 - THUMBNAIL_BOX_SIZE.WIDTH / 2),
       y: parseInt(height / 2 - THUMBNAIL_BOX_SIZE.HEIGHT / 2)
     }
-    this.begin_point = {x: 0, y: 0}
-    this.dragging = false
 
     let ctx = canvas.getContext('2d')
 
@@ -51,7 +58,10 @@ class ThumbnailView {
     this.draw(canvas, ctx)
   }
   get position () {
-    return this.current_point
+    return {
+      x: (this.current_point.x + THUMBNAIL_BOX_SIZE.WIDTH / 2) / this.width,
+      y: (this.current_point.y + THUMBNAIL_BOX_SIZE.HEIGHT / 2) / this.height
+    }
   }
   static getPoint (e, canvas) {
     return {
@@ -88,15 +98,19 @@ class ThumbnailView {
     }
     if (this.current_point.x < 0) {
       this.current_point.x = 0
+      this.begin_point.x = x
     }
     if (this.current_point.x > canvas.width - THUMBNAIL_BOX_SIZE.WIDTH) {
       this.current_point.x = canvas.width - THUMBNAIL_BOX_SIZE.WIDTH
+      this.begin_point.x = x - (canvas.width - THUMBNAIL_BOX_SIZE.WIDTH)
     }
     if (this.current_point.y < 0) {
       this.current_point.y = 0
+      this.begin_point.y = y
     }
     if (this.current_point.y > canvas.height - THUMBNAIL_BOX_SIZE.HEIGHT) {
       this.current_point.y = canvas.height - THUMBNAIL_BOX_SIZE.HEIGHT
+      this.begin_point.y = y - (canvas.height - THUMBNAIL_BOX_SIZE.HEIGHT)
     }
     this.draw(canvas, ctx)
   }
@@ -105,6 +119,27 @@ class ThumbnailView {
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     ctx.clearRect(this.current_point.x, this.current_point.y, THUMBNAIL_BOX_SIZE.WIDTH, THUMBNAIL_BOX_SIZE.HEIGHT)
     ctx.strokeRect(this.current_point.x, this.current_point.y, THUMBNAIL_BOX_SIZE.WIDTH, THUMBNAIL_BOX_SIZE.HEIGHT)
+
+    if (this.preview) {
+      this.preview.update(this.position)
+    }
+  }
+}
+
+class ThumbnailPreview {
+  constructor (img, width, height, data) {
+    this.img = img
+
+    let previewBox = img.parentElement
+    previewBox.style.width = THUMBNAIL_BOX_SIZE.WIDTH + 'px'
+    previewBox.style.height = THUMBNAIL_BOX_SIZE.HEIGHT + 'px'
+    img.src = data
+    img.width = width
+    img.height = height
+  }
+  update (position) {
+    this.img.style.left = '-' + (this.img.width * position.x - THUMBNAIL_BOX_SIZE.WIDTH / 2) + 'px'
+    this.img.style.top = '-' + (this.img.height * position.y - THUMBNAIL_BOX_SIZE.HEIGHT / 2) + 'px'
   }
 }
 
@@ -144,7 +179,13 @@ export default {
           // vm.thumb_data = this.resize(img, THUMBNAIL_MAX_SIZE)
           vm.thumb_data = vm.img_data
 
-          this._thumbnail_view = this._thumbnail_view || new ThumbnailView(e.target.previousElementSibling, width, height, vm.thumb_data)
+          let preview = new ThumbnailPreview(
+              e.target.previousElementSibling.children[1].children[0],  // preview img element
+              width, height, vm.thumb_data)
+
+          this._thumbnail_view = new ThumbnailView(
+              e.target.previousElementSibling.children[0],  // canvas element
+              width, height, vm.thumb_data, preview)
         }
       }
     },
@@ -188,4 +229,14 @@ export default {
 </script>
 
 <style>
+#upload div.preview {
+  overflow: hidden;
+  position: relative;
+  /* width: 200px; */
+  /* height: 200px; */
+}
+#upload div.preview img {
+  position: relative;
+  /* width: 100%; */
+}
 </style>

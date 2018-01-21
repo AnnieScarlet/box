@@ -1,22 +1,22 @@
 <template>
   <div id="upload">
     Upload
-        <form v-on:submit.prevent="submit">
-            <div>
-                <div>
-                  <canvas class="thumbnail" width="0" height="0"></canvas>
-                  <Thumbnail class="thumbnail" v-if="thumb_url" v-bind:url="thumb_url" v-bind:rect="thumb_rect" />
-                </div>
-                <input type="file" name="file" v-on:change="onChangeFile">
-            </div>
-            <div>
-                <input type="text" name="title" v-model="title" placeholder="title" />
-            </div>
-            <div>
-                <textarea name="description" v-model="description" placeholder="description"></textarea>
-            </div>
-            <button type="submit">Submit</button>
-        </form>
+    <form v-on:submit.prevent="submit">
+      <div>
+        <div>
+          <canvas class="thumbnail" width="0" height="0"></canvas>
+          <Thumbnail class="thumbnail" v-if="thumb_url" v-bind:url="thumb_url" v-bind:rect="thumb_rect" />
+        </div>
+        <input type="file" name="file" v-on:change="onChangeFile">
+      </div>
+      <div>
+        <input type="text" name="title" v-model="title" placeholder="title" />
+      </div>
+      <div>
+        <textarea name="description" v-model="description" placeholder="description"></textarea>
+      </div>
+      <button type="submit">Submit</button>
+    </form>
   </div>
 </template>
 
@@ -32,10 +32,12 @@ class ThumbnailView {
     this.width = width
     this.height = height
 
+    // デフォルト矩形の起点
     let pivot = {
       x: parseInt(width / 2 - consts.THUMBNAIL_BOX_SIZE.WIDTH / 2),
       y: parseInt(height / 2 - consts.THUMBNAIL_BOX_SIZE.HEIGHT / 2)
     }
+
     this.dragging = false
     this.begin_point = {x: 0, y: 0}
     this.current_rect = {
@@ -59,18 +61,21 @@ class ThumbnailView {
 
     this.draw(canvas, ctx)
   }
+  // 矩形の値を 0 ~ 1.0 の値にして返す
   get rect () {
     return {
       min: {x: this.current_rect.min.x / this.width, y: this.current_rect.min.y / this.height},
       max: {x: this.current_rect.max.x / this.width, y: this.current_rect.max.y / this.height}
     }
   }
+  // canvas の左上 を起点としたカーソル位置を返す
   static getPoint (e, canvas) {
     return {
       x: parseInt(e.clientX - canvas.offsetLeft),
       y: parseInt(e.clientY - canvas.offsetTop)
     }
   }
+  // canvas からはみ出た矩形の位置を解決する
   resolveRect () {
     if (this.current_rect.min.x < 0) {
       this.current_rect.max.x -= this.current_rect.min.x
@@ -89,6 +94,7 @@ class ThumbnailView {
       this.current_rect.max.y = this.height
     }
   }
+  // 矩形のスケールを変更
   setScale (scale) {
     if (this.width * scale < consts.THUMBNAIL_BOX_SIZE.WIDTH) {
       scale = consts.THUMBNAIL_BOX_SIZE.WIDTH / this.width
@@ -141,6 +147,7 @@ class ThumbnailView {
       }
     }
 
+    // canvas 外へは矩形を移動しない
     if (this.current_rect.min.x < 0) {
       this.begin_point.x = x
     }
@@ -251,11 +258,12 @@ export default {
       tmp = tmp || document.createElement('canvas')
       let ctx = tmp.getContext('2d')
 
+      // 急激に縮小するとかなりギザる
       // if (width / src.width <= 0.5) {
       //   tmp.width = src.width * 0.5
       //   tmp.height = src.height * 0.5
       //   ctx.drawImage(src, 0, 0, tmp.width, tmp.height)
-      //   return this.resize(tmp, max, src.getContext && src)
+      //   return await this.resize(tmp, max, src.getContext && src)
       // }
 
       tmp.width = width

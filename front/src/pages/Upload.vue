@@ -10,10 +10,10 @@
                 <input type="file" name="file" v-on:change="onChangeFile">
             </div>
             <div>
-                <input type="text" name="title" placeholder="title" />
+                <input type="text" name="title" v-model="title" placeholder="title" />
             </div>
             <div>
-                <textarea name="description" placeholder="description"></textarea>
+                <textarea name="description" v-model="description" placeholder="description"></textarea>
             </div>
             <button type="submit">Submit</button>
         </form>
@@ -50,7 +50,7 @@ class ThumbnailView {
 
     canvas.width = width
     canvas.height = height
-    canvas.style.backgroundImage = 'url(data:' + data + ')'
+    canvas.style.backgroundImage = `url("${data}")`
     canvas.style.backgroundSize = '100%'
 
     ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'
@@ -194,20 +194,40 @@ class ThumbnailPreview {
       this.img.width = this.width * scale
       this.img.height = this.height * scale
     }
-    this.img.style.left = '-' + (this.img.width * rect.min.x) + 'px'
-    this.img.style.top = '-' + (this.img.height * rect.min.y) + 'px'
+    this.img.style.left = `-${this.img.width * rect.min.x}px`
+    this.img.style.top = `-${this.img.height * rect.min.y}px`
   }
+}
+
+if (!HTMLCanvasElement.prototype.toBlob) {
+  Object.defineProperty(HTMLCanvasElement.prototype, 'toBlob', {
+    value: (callback, type, quality) => {
+      let binStr = atob(this.toDataURL(type, quality).split(',')[1])
+      let len = binStr.length
+      let arr = new Uint8Array(len)
+
+      for (var i = 0; i < len; i++) {
+        arr[i] = binStr.charCodeAt(i)
+      }
+
+      callback(new Blob([arr], {type: type || 'image/png'}))
+    }
+  })
 }
 
 export default {
   data () {
     return {
-      img_data: null,
-      thumb_data: null
+      title: null,
+      description: null
     }
   },
   methods: {
     reset () {
+      this._img_data = null
+      if (this._img_url) {
+        URL.revokeObjectURL(this._img_url)
+      }
     },
     onChangeFile (e) {
       let files = e.target.files
@@ -218,30 +238,30 @@ export default {
       let file = files[0]
       let type = file.type.split('/', 2)[0]
       if (type !== 'image') {
-        this.reset()
         return
       }
+
+      this.reset()
 
       let vm = this
       let reader = new FileReader()
       reader.readAsDataURL(file)
-      reader.onload = () => {
+      reader.onload = async () => {
         let img = new Image()
         img.src = reader.result
-        img.onload = () => {
+        img.onload = async () => {
           let { width, height } = this.resolveSize(img.width, img.height, THUMBNAIL_MAX_SIZE, THUMBNAIL_MAX_SIZE)
 
-          vm.img_data = this.resize(img, IMAGE_MAX_SIZE)
-          // vm.thumb_data = this.resize(img, THUMBNAIL_MAX_SIZE)
-          vm.thumb_data = vm.img_data
+          vm._img_data = await this.resize(img, IMAGE_MAX_SIZE)
+          vm._img_url = URL.createObjectURL(vm._img_data)
 
           let preview = new ThumbnailPreview(
               e.target.previousElementSibling.children[1].children[0],  // preview img element
-              width, height, vm.thumb_data)
+              width, height, vm._img_url)
 
           this._thumbnail_view = new ThumbnailView(
               e.target.previousElementSibling.children[0],  // canvas element
-              width, height, vm.thumb_data, preview)
+              width, height, vm._img_url, preview)
         }
       }
     },
@@ -259,27 +279,36 @@ export default {
       }
       return { width, height }
     },
-    resize (src, max, tmp) {
+    async resize (src, max, tmp) {
       let { width, height } = this.resolveSize(src.width, src.height, max)
       tmp = tmp || document.createElement('canvas')
       let ctx = tmp.getContext('2d')
 
-      if (width / src.width <= 0.5) {
-        tmp.width = src.width * 0.5
-        tmp.height = src.height * 0.5
-        ctx.drawImage(src, 0, 0, tmp.width, tmp.height)
-        return this.resize(tmp, max, src.getContext && src)
-      }
+      // if (width / src.width <= 0.5) {
+      //   tmp.width = src.width * 0.5
+      //   tmp.height = src.height * 0.5
+      //   ctx.drawImage(src, 0, 0, tmp.width, tmp.height)
+      //   return this.resize(tmp, max, src.getContext && src)
+      // }
 
       tmp.width = width
       tmp.height = height
       ctx.drawImage(src, 0, 0, width, height)
-      return tmp.toDataURL('image/jpeg', QUARITY)
+
+      return new Promise((resolve, reject) => {
+        tmp.toBlob(resolve, 'image/jpeg', QUARITY)
+      })
     },
     submit (e) {
-      let form = new FormData(e.srcElement)
-      api.postMediaData(form)
+      let data = new FormData()
+      data.append('title', this.title)
+      data.append('description', this.description)
+      data.append('file', this._img_data)
+      api.postMediaData(data)
     }
+  },
+  destroyed () {
+    this.reset()
   }
 }
 </script>

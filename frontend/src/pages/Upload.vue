@@ -5,7 +5,7 @@
             <div>
                 <div>
                   <canvas class="thumbnail" width="0" height="0"></canvas>
-                  <div class="preview"><img /></div>
+                  <Thumbnail class="thumbnail" v-if="thumb_url" v-bind:url="thumb_url" v-bind:rect="thumb_rect" />
                 </div>
                 <input type="file" name="file" v-on:change="onChangeFile">
             </div>
@@ -21,29 +21,26 @@
 </template>
 
 <script>
+import consts from '@/constants'
 import api from '@/api'
-
-const QUARITY = 0.6
-const THUMBNAIL_BOX_SIZE = { WIDTH: 200, HEIGHT: 200 }
-const IMAGE_MAX_SIZE = 1280
-const THUMBNAIL_MAX_SIZE = 250
+import Thumbnail from '@/components/Thumbnail'
 
 class ThumbnailView {
-  constructor (canvas, width, height, data, preview) {
-    this.preview = preview
+  constructor (canvas, width, height, data, updateRect) {
+    this.update_rect = updateRect
 
     this.width = width
     this.height = height
 
     let pivot = {
-      x: parseInt(width / 2 - THUMBNAIL_BOX_SIZE.WIDTH / 2),
-      y: parseInt(height / 2 - THUMBNAIL_BOX_SIZE.HEIGHT / 2)
+      x: parseInt(width / 2 - consts.THUMBNAIL_BOX_SIZE.WIDTH / 2),
+      y: parseInt(height / 2 - consts.THUMBNAIL_BOX_SIZE.HEIGHT / 2)
     }
     this.dragging = false
     this.begin_point = {x: 0, y: 0}
     this.current_rect = {
       min: {x: pivot.x, y: pivot.y},
-      max: {x: pivot.x + THUMBNAIL_BOX_SIZE.WIDTH, y: pivot.y + THUMBNAIL_BOX_SIZE.HEIGHT}
+      max: {x: pivot.x + consts.THUMBNAIL_BOX_SIZE.WIDTH, y: pivot.y + consts.THUMBNAIL_BOX_SIZE.HEIGHT}
     }
 
     let ctx = canvas.getContext('2d')
@@ -93,16 +90,16 @@ class ThumbnailView {
     }
   }
   setScale (scale) {
-    if (this.width * scale < THUMBNAIL_BOX_SIZE.WIDTH) {
-      scale = THUMBNAIL_BOX_SIZE.WIDTH / this.width
+    if (this.width * scale < consts.THUMBNAIL_BOX_SIZE.WIDTH) {
+      scale = consts.THUMBNAIL_BOX_SIZE.WIDTH / this.width
     }
-    if (this.height * scale < THUMBNAIL_BOX_SIZE.HEIGHT) {
-      scale = THUMBNAIL_BOX_SIZE.HEIGHT / this.height
+    if (this.height * scale < consts.THUMBNAIL_BOX_SIZE.HEIGHT) {
+      scale = consts.THUMBNAIL_BOX_SIZE.HEIGHT / this.height
     }
     let size = {w: this.current_rect.max.x - this.current_rect.min.x, h: this.current_rect.max.y - this.current_rect.min.y}
     let pivot = {x: this.current_rect.min.x + size.w / 2, y: this.current_rect.min.y + size.h / 2}
-    let x = THUMBNAIL_BOX_SIZE.WIDTH * (1.0 / scale) / 2
-    let y = THUMBNAIL_BOX_SIZE.HEIGHT * (1.0 / scale) / 2
+    let x = consts.THUMBNAIL_BOX_SIZE.WIDTH * (1.0 / scale) / 2
+    let y = consts.THUMBNAIL_BOX_SIZE.HEIGHT * (1.0 / scale) / 2
     this.current_rect = {
       min: {x: pivot.x - x, y: pivot.y - y},
       max: {x: pivot.x + x, y: pivot.y + y}
@@ -165,37 +162,7 @@ class ThumbnailView {
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     ctx.clearRect(this.current_rect.min.x, this.current_rect.min.y, this.current_rect.max.x - this.current_rect.min.x, this.current_rect.max.y - this.current_rect.min.y)
     ctx.strokeRect(this.current_rect.min.x, this.current_rect.min.y, this.current_rect.max.x - this.current_rect.min.x, this.current_rect.max.y - this.current_rect.min.y)
-
-    if (this.preview) {
-      this.preview.update(this.rect)
-    }
-  }
-}
-
-class ThumbnailPreview {
-  constructor (img, width, height, data) {
-    this.scale = 1.0
-    this.width = width
-    this.height = height
-    this.img = img
-
-    let previewBox = img.parentElement
-    previewBox.style.width = THUMBNAIL_BOX_SIZE.WIDTH + 'px'
-    previewBox.style.height = THUMBNAIL_BOX_SIZE.HEIGHT + 'px'
-
-    img.src = data
-    img.width = width
-    img.height = height
-  }
-  update (rect) {
-    let scale = THUMBNAIL_BOX_SIZE.WIDTH / (this.width * (rect.max.x - rect.min.x))
-    if (this.scale !== scale) {
-      this.scale = scale
-      this.img.width = this.width * scale
-      this.img.height = this.height * scale
-    }
-    this.img.style.left = `-${this.img.width * rect.min.x}px`
-    this.img.style.top = `-${this.img.height * rect.min.y}px`
+    this.update_rect(this.rect)
   }
 }
 
@@ -216,8 +183,11 @@ if (!HTMLCanvasElement.prototype.toBlob) {
 }
 
 export default {
+  components: { Thumbnail },
   data () {
     return {
+      thumb_url: null,
+      thumb_rect: null,
       title: null,
       description: null
     }
@@ -250,18 +220,15 @@ export default {
         let img = new Image()
         img.src = reader.result
         img.onload = async () => {
-          let { width, height } = this.resolveSize(img.width, img.height, THUMBNAIL_MAX_SIZE, THUMBNAIL_MAX_SIZE)
+          let { width, height } = this.resolveSize(img.width, img.height, consts.THUMBNAIL_MAX_SIZE, consts.THUMBNAIL_MAX_SIZE)
 
-          vm._img_data = await this.resize(img, IMAGE_MAX_SIZE)
+          vm._img_data = await this.resize(img, consts.IMAGE_MAX_SIZE)
           vm._img_url = URL.createObjectURL(vm._img_data)
-
-          let preview = new ThumbnailPreview(
-              e.target.previousElementSibling.children[1].children[0],  // preview img element
-              width, height, vm._img_url)
+          vm.thumb_url = vm._img_url
 
           this._thumbnail_view = new ThumbnailView(
               e.target.previousElementSibling.children[0],  // canvas element
-              width, height, vm._img_url, preview)
+              width, height, vm._img_url, (rect) => { vm.thumb_rect = rect })
         }
       }
     },
@@ -296,7 +263,7 @@ export default {
       ctx.drawImage(src, 0, 0, width, height)
 
       return new Promise((resolve, reject) => {
-        tmp.toBlob(resolve, 'image/jpeg', QUARITY)
+        tmp.toBlob(resolve, 'image/jpeg', consts.QUALITY)
       })
     },
     submit (e) {
@@ -314,14 +281,4 @@ export default {
 </script>
 
 <style>
-#upload div.preview {
-  overflow: hidden;
-  position: relative;
-  /* width: 200px; */
-  /* height: 200px; */
-}
-#upload div.preview img {
-  position: relative;
-  /* width: 100%; */
-}
 </style>

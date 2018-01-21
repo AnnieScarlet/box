@@ -1,23 +1,23 @@
 <template>
-	<div id="index">
-		Index <br>
-		route name: {{ $route.name }}<br>
-		route path: {{ $route.path }}<br>
-		route params: {{ $route.params[0] }}<br>
+  <div id="index">
+    Index <br>
+    route name: {{ $route.name }}<br>
+    route path: {{ $route.path }}<br>
+    route params: {{ $route.params[0] }}<br>
 
-		<div class="thumb" v-for="post in posts" v-on:click="selectMedia(post)">
-			<img v-bind:src="getThumbnailUrl(post)" />
-		</div>
-		<div class="clear"/>
-	</div>
+    <Thumbnail class="thumbnail" v-for="post in posts" v-bind:url="getThumbnailUrl(post)" v-bind:rect="post.thumb_rect" v-bind:key="post.id" v-on:click.native="selectMedia(post)" />
+    <div class="clear"/>
+  </div>
 </template>
 
 <script>
 import consts from '@/constants'
 import api from '@/api'
+import Thumbnail from '@/components/Thumbnail'
 
 export default {
   name: 'index',
+  components: { Thumbnail },
   data () {
     return {
       posts: []
@@ -63,13 +63,10 @@ export default {
 </script>
 
 <style>
-#index .thumb {
-	float: left;
+#index .thumbnail {
+  float: left;
 }
 #index .clear {
-	clear: both;
-}
-#index .thumb img {
-	width: 100px;
+  clear: both;
 }
 </style>

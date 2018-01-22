@@ -1,9 +1,9 @@
 <template>
-  <div id="app">
-    <app-header />
-    <router-view />
-    <media-view />
-    <app-footer />
+  <div id="container">
+    <app-header id="header" />
+    <router-view id="contents" />
+    <app-footer id="footer" />
+    <media-view id="media-view" />
   </div>
 </template>
 
@@ -18,19 +18,50 @@ export default {
     MediaView,
     AppHeader,
     AppFooter
+  },
+  methods: {
+    fixMargin () {
+      let contents = document.getElementById('contents')
+      contents.style.marginTop = this._header.offsetHeight + 'px'
+      contents.style.marginBottom = this._footer.offsetHeight + 'px'
+    }
+  },
+  mounted () {
+    this._header = document.getElementById('header')
+    this._footer = document.getElementById('footer')
+    window.addEventListener('resize', this.fixMargin, false)
+    this.fixMargin()
+  },
+  updated () {
+    this.fixMargin()
   }
 }
 </script>
 
 <style>
-/*
-#app {
-  font-family: 'Avenir', Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
+*{
+  margin:0;
+  padding:0;
 }
-*/
+body{
+  width:100%;
+}
+header {
+  position: fixed;
+  top: 0;
+  z-index: 10;
+  background-color: #fff;
+  width:100%;
+}
+footer {
+  position: fixed;
+  bottom: 0;
+  z-index: 10;
+  background-color: #fff;
+  width:100%;
+}
+#contents {
+  height: auto;
+  overflow-y: auto;
+}
 </style>

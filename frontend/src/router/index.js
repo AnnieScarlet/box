@@ -12,7 +12,7 @@ import Signup from '@/pages/Signup'
 
 Vue.use(Router)
 
-export default new Router({
+const router = new Router({
   // mode: 'history',  サーバー立てるまで hash
   routes: [
     {
@@ -73,3 +73,14 @@ export default new Router({
     }
   ]
 })
+
+// router.beforeEach((to, from, next) => {
+  // console.log(to, from, to.name)
+  // if (from.name === 'index-view') {
+  //   next('/')
+  // } else {
+  //   next()
+  // }
+// })
+
+export default router

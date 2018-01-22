@@ -3,7 +3,6 @@ import Router from 'vue-router'
 
 import Browser from '@/pages/Browser'
 import Album from '@/pages/Album'
-import Upload from '@/pages/Upload'
 import User from '@/pages/User'
 import Settings from '@/pages/Settings'
 import Signin from '@/pages/Signin'
@@ -45,7 +44,7 @@ export default new Router({
     {
       path: '/upload',
       name: 'upload`',
-      component: Upload,
+      component: () => import('@/pages/Upload'),
       meta: { requiresAuth: true }
     },
     {

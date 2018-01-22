@@ -271,7 +271,7 @@ export default {
       ctx.drawImage(src, 0, 0, width, height)
 
       return new Promise((resolve, reject) => {
-        tmp.toBlob(resolve, 'image/jpeg', consts.QUALITY)
+        tmp.toBlob(resolve, 'image/jpeg', consts.IMAGE_QUALITY)
       })
     },
     submit (e) {

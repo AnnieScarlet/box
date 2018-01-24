@@ -29,10 +29,8 @@ export default {
   data () {
     return {
       posts: [],
-      reserved: [],
       index: 0,
       scroll_y: 0,
-      padding_rows: 0,
       info_height: 0,
       item_size: null,
       visible_size: null
@@ -63,10 +61,12 @@ export default {
       if (!this.item_size) {
         return
       }
-      let scroll = Math.ceil(this.index / this.displayXY.x) * this.item_size.height
+      let totalHeight = Math.ceil(this.posts.length / this.displayXY.x) * this.item_size.height
+      let scrollHeight = Math.ceil(this.index / this.displayXY.x) * this.item_size.height
+      let visibleHeight = this.displayXY.y * this.item_size.height
       return {
-        paddingTop: scroll + 'px',
-        paddingBottom: ((Math.ceil(this.posts.length / this.displayXY.x) - this.displayXY.y) * this.item_size.height - this.scroll_y) + 'px'
+        paddingTop: scrollHeight + 'px',
+        paddingBottom: (totalHeight - scrollHeight - visibleHeight) + 'px'
       }
     }
   },
@@ -87,17 +87,19 @@ export default {
   },
 
   updated () {
-    if (!this.item_size && this._posts.children.length > 0) {
-      let item = this._posts.children[0]
-      this.item_size = { width: item.offsetWidth, height: item.offsetHeight }
+    if (!this.item_size) {
+      let posts = document.getElementById('index-posts')
+      if (posts.children.length > 0) {
+        let item = posts.children[0]
+        this.item_size = { width: item.offsetWidth, height: item.offsetHeight }
+      }
     }
   },
   mounted () {
     this.info_height = document.getElementById('index-info').offsetHeight
-    this._posts = document.getElementById('index-posts')
 
     const checkVisibleSize = () => {
-      this.visible_size = { width: this._posts.offsetWidth, height: this._posts.offsetHeight }
+      this.visible_size = { width: this.$el.offsetWidth, height: this.$el.offsetHeight }
     }
 
     window.addEventListener('resize', checkVisibleSize, false)
@@ -125,6 +127,7 @@ export default {
       let {data, error} = await api.getPosts(query)
       if (!error) {
         data.forEach((x) => posts.push({ id: x }))
+        // posts.push({id: data[0]})
         this.posts = posts
       }
     })()
@@ -148,6 +151,5 @@ export default {
 }
 #index-posts {
   width: 100%;
-  height: 100%;
 }
 </style>

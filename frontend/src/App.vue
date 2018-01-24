@@ -43,17 +43,23 @@ export default {
   margin:0;
   padding:0;
 }
-body{
+html, body{
+  position: fixed;
   width:100%;
+  height: 100%;
 }
-header {
+#container {
+  width:100%;
+  height: 100%;
+}
+#header {
   position: fixed;
   top: 0;
   z-index: 10;
   background-color: #fff;
   width:100%;
 }
-footer {
+#footer {
   position: fixed;
   bottom: 0;
   z-index: 10;
